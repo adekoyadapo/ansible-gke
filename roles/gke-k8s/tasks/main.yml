@@ -1,0 +1,9 @@
+---
+# tasks file for gke-k8s
+
+- include_tasks: create_network.yml
+  when: remove_cluster is not defined
+- include_tasks: create_cluster.yml
+  when: remove_cluster is not defined
+- include_tasks: remove_all.yml
+  when: (remove_cluster is defined) and (remove_cluster == 'yes')

@@ -1,0 +1,59 @@
+---
+# Remove all infra
+- name: gather network info
+  gcp_compute_network_info:
+    filters:
+    - name = network-{{ cluster_name }}
+    project: "{{ project_id }}"
+    auth_kind: serviceaccount
+    service_account_file: "{{ credential }}"
+  register: network
+
+- name: gather subnetwork info
+  gcp_compute_subnetwork_info:
+    region: "{{ region }}"
+    filters:
+    - name = subnet-{{ cluster_name }}
+    project: "{{ project_id }}"
+    auth_kind: serviceaccount
+    service_account_file: "{{ credential }}"
+  register: subnet
+
+- name: remove cluster
+  google.cloud.gcp_container_cluster:
+    name: "{{ cluster_name }}"
+    initial_node_count: "{{ initial_node_count }}"
+    location: "{{ zone }}"
+    network: "{{ network.resources[0].name }}"
+    subnetwork: "{{ subnet.resources[0].name }}"
+    project: "{{ project_id }}"
+    auth_kind: serviceaccount
+    service_account_file: "{{ credential }}"
+    private_cluster_config:
+        enable_private_endpoint: yes
+        enable_private_nodes: yes
+        master_ipv4_cidr_block: "{{ master_cidr }}"
+    state: "{{ cluster_state | default('absent') }}"
+
+- debug:
+    msg: "{{ network.resources[0] }}"
+
+- name: remove subnetwork
+  google.cloud.gcp_compute_subnetwork:
+    name: "{{ subnet.resources[0].name }}"
+    region: "{{ region }}"
+    network: "{{ network.resources[0] }}"
+    ip_cidr_range: "{{ gke_cidr }}"
+    project: "{{ project_id }}"
+    auth_kind: serviceaccount
+    service_account_file: "{{ credential }}"
+    state: "{{ cluster_state | default('absent') }}"
+
+- name: remove vpc
+  google.cloud.gcp_compute_network:
+    name: "{{ network.resources[0].name }}"
+    auto_create_subnetworks: 'false'
+    project: "{{ project_id }}"
+    auth_kind: serviceaccount
+    service_account_file: "{{ credential }}"
+    state: "{{ cluster_state | default('absent') }}"
